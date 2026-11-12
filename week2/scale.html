@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>2주차 · 실제 비율로 그리기</title>
+<style>
+ html,body{margin:0;height:100%;background:#06090f;color:#c9d6e6;overflow:hidden;
+   font:13px/1.65 ui-monospace,Menlo,Consolas,monospace}
+ #wrap{display:flex;height:100vh}
+ #cv{flex:1;min-width:0;width:auto;height:100%;display:block}
+ #panel{width:330px;box-sizing:border-box;padding:14px;background:#0d1420;border-left:1px solid #22303f;overflow-y:auto}
+ h1{font-size:15px;margin:0 0 6px;color:#ffd8a0}
+ h2{font-size:12px;margin:14px 0 6px;color:#9fc7ff;border-top:1px solid #1d2836;padding-top:8px}
+ .ctl{margin:8px 0;font-size:12px}
+ .ctl label{display:flex;justify-content:space-between}
+ input[type=range]{width:100%}
+ pre{font-size:11px;line-height:1.3;background:#0a1119;border:1px solid #22303f;padding:7px;border-radius:6px;color:#9fd0ff;overflow-x:auto}
+ .row{display:flex;gap:6px;margin:6px 0} .row button{flex:1}
+ button{padding:6px;background:#1b2534;color:#dbe6f3;border:1px solid #2f3d50;border-radius:5px;cursor:pointer;font:inherit}
+ button.on{background:#3d6f9e;border-color:#3d6f9e}
+ p.note{font-size:12px;color:#93a6bd}
+</style></head>
+<body><div id="wrap"><canvas id="cv"></canvas><aside id="panel">
+<h1>2-2 실제 비율</h1>
+<p class="note">태양–지구 거리 1 AU 를 몇 단위로 둘지 정하면 행성 반지름의 화면 크기도 함께 결정됩니다.
+ 1 AU = 149.6 백만 km, 지구 반지름 = 6,371 km → 반지름은 거리의 약 1/23,481 입니다.</p>
+<div class="ctl"><label>1 AU 를 몇 단위로? <span id="auVal">10.0</span></label>
+  <input id="au" type="range" min="2" max="20" step="0.5" value="10"></div>
+<div class="ctl"><label>지구 반지름 과장 배율 <span id="kVal">×1</span></label>
+  <input id="k" type="range" min="1" max="300" step="1" value="1"></div>
+<div class="row"><button id="real" class="on">실제 비율</button><button id="exag">과장 비율</button></div>
+<h2>지구의 모델 행렬 (T(au, 0, 0) · R(자전))</h2><pre id="mEarth"></pre>
+<h2>수치</h2><pre id="nums"></pre>
+<p class="note">실제 비율에서는 지구가 점으로 보입니다. 과장 배율을 키우면 교재용 그림이 되고,
+ 두 값의 차이를 아래 수치로 함께 확인할 수 있습니다.</p>
+</aside></div>
+<script src="../src/mesh.js"></script><script src="common.js"></script>
+<script>
+(() => {
+  const M = CGW.M, cv = document.querySelector('#cv');
+  const R = CGW.make(cv); if (!R) return;
+
+  const EARTH_R_KM = 6371, AU_KM = 149597870;
+  const S = { au: 10, k: 1, spin: 0.6 };
+  const cam = { yaw: 0.9, pitch: 0.28, dist: 16, target: [5, 0.6, 0] };
+  CGW.orbit(cv, cam);
+
+  const radiusUnits = (au, k) => (au * EARTH_R_KM / AU_KM) * k;
+
+  function draw(){
+    const rEarth = radiusUnits(S.au, S.k);
+    const mEarth = M.multiply(M.translate(S.au, 0, 0), M.rotateY(S.spin));
+    const items = [
+      { model: M.multiply(M.translate(0, -0.02, 0), M.multiply(M.rotateX(Math.PI / 2), M.scale(40, 40, 40))),
+        color: [0.26, 0.30, 0.37], quad: true, flat: true },
+      { model: M.scale(1, 1, 1), color: [1.0, 0.78, 0.34] },
+      { model: M.multiply(M.translate(S.au, 0, 0), M.scale(rEarth, rEarth, rEarth)), color: [0.30, 0.55, 0.90] },
+      { model: M.multiply(M.translate(S.au / 2, 0.02, 0), M.scale(0.04, 0.04, 0.04)), color: [0.70, 0.90, 1.0] },
+    ];
+    R.draw(items, { eye: CGW.eyeOf(cam), target: cam.target, fov: 45 });
+
+    document.querySelector('#mEarth').textContent = CGW.fmt(mEarth);
+    const trueR = radiusUnits(S.au, 1);
+    document.querySelector('#nums').textContent =
+      '태양 반지름 = 1 단위 (임의)\n'
+      + '1 AU = ' + S.au.toFixed(1) + ' 단위\n'
+      + '지구 반지름(실제) = ' + trueR.toFixed(5) + ' 단위 (= AU/' + Math.round(AU_KM / EARTH_R_KM).toLocaleString() + ')\n'
+      + '현재 그리는 반지름 = ' + rEarth.toFixed(5) + ' 단위 (과장 ×' + S.k + ')\n'
+      + '태양/지구 반지름 비 = ' + (1 / rEarth).toFixed(1) + ' : 1';
+  }
+
+  function bind(id, key, fmt, out){
+    const el = document.querySelector('#' + id), lab = document.querySelector('#' + out);
+    el.addEventListener('input', () => { S[key] = Number(el.value); lab.textContent = fmt(S[key]); draw(); });
+  }
+  bind('au', 'au', v => v.toFixed(1), 'auVal');
+  bind('k', 'k', v => '×' + v, 'kVal');
+
+  const realBtn = document.querySelector('#real'), exagBtn = document.querySelector('#exag');
+  realBtn.onclick = () => {
+    S.k = 1; document.querySelector('#k').value = 1; document.querySelector('#kVal').textContent = '×1';
+    realBtn.classList.add('on'); exagBtn.classList.remove('on'); draw();
+  };
+  exagBtn.onclick = () => {
+    S.k = 200; document.querySelector('#k').value = 200; document.querySelector('#kVal').textContent = '×200';
+    exagBtn.classList.add('on'); realBtn.classList.remove('on'); draw();
+  };
+  draw();
+})();
+</script>
+</body></html>

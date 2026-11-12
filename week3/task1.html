@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>3주차 실습 1 · 떠 있는 공과 바닥</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #0b0f16; color: #c9d6e6;
+               font: 13px/1.6 ui-monospace, Menlo, Consolas, monospace; overflow: hidden; }
+  #wrap { display: flex; height: 100vh; }
+  #stage { flex: 1; position: relative; min-width: 0; }
+  canvas { display: block; width: 100%; height: 100%; }
+  #panel { width: 300px; padding: 14px; box-sizing: border-box; background: #0f1622;
+           border-left: 1px solid #24303f; overflow-y: auto; }
+  h1 { font-size: 15px; margin: 0 0 8px; color: #ffd8a0; }
+  .ctl { margin: 10px 0; }
+  .ctl label { display: flex; justify-content: space-between; font-size: 12px; }
+  .ctl input[type=range] { width: 100%; }
+  button { margin: 4px 4px 0 0; padding: 5px 8px; background: #1b2534; color: #dbe6f3;
+           border: 1px solid #2f3d50; border-radius: 5px; cursor: pointer; font: inherit; }
+  button.on { background: #3d6f9e; border-color: #3d6f9e; }
+  pre#matrix { font-size: 11px; line-height: 1.35; background: #0a1119; padding: 8px;
+               border: 1px solid #22303f; border-radius: 6px; color: #9fd0ff; overflow-x: auto; }
+  #hint { position: absolute; left: 12px; bottom: 10px; font-size: 11px; color: #7f93ab; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="stage"><canvas id="cv"></canvas><div id="hint">드래그 = 시점 회전 · 휠 = 거리</div></div>
+  <aside id="panel">
+    <h1>3주차 실습 1 · 떠 있는 공 + 바닥</h1>
+    <p style="font-size:12px;color:#93a6bd">정점/인덱스 배열 · 행렬 카메라 · 보간 · 확산광 · 절차적 텍스처.
+      공은 바닥 위에 떠서 회전하고, 바닥에는 그림자가 진다.</p>
+    <div class="ctl"><label>투영 방식</label>
+      <button id="btnPersp" class="on">원근 투영</button><button id="btnOrtho">직교 투영</button></div>
+    <div class="ctl"><label>카메라 이동 <span id="moveVal">정지</span></label>
+      <button id="btnMove">자동 회전 켜기</button></div>
+    <div class="ctl"><label>시야각(FOV) <span id="fovVal">45°</span></label>
+      <input id="fov" type="range" min="20" max="90" step="1" value="45"></div>
+    <div class="ctl"><label>공의 높이 <span id="hVal">1.6</span></label>
+      <input id="height" type="range" min="0.6" max="3.0" step="0.05" value="1.6"></div>
+    <div class="ctl"><label>확산광 세기 <span id="dVal">1.0</span></label>
+      <input id="diffuse" type="range" min="0" max="2" step="0.05" value="1"></div>
+    <div class="ctl"><label>절차적 텍스처 <span id="texVal">격자 8×8</span></label>
+      <input id="tex" type="range" min="1" max="24" step="1" value="8"></div>
+    <div class="ctl"><label>MVP 행렬 (열 우선, 읽기용)</label><pre id="matrix"></pre></div>
+    <p style="font-size:12px;color:#93a6bd">직교 투영으로 바꾸면 공의 크기가 거리에 따라 변하지 않고,
+      카메라를 옮겨도 같은 크기로 보입니다. 원근 투영에서는 멀수록 작아집니다.</p>
+  </aside>
+</div>
+<script>window.addEventListener("error",e=>{document.title="ERR: "+e.message+" @line "+e.lineno})</script><script src="../src/mesh.js"></script>
+<script src="task1.js"></script>
+</body>
+</html>

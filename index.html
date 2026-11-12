@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>나만의 태양계 · 컴퓨터그래픽스 개인 프로젝트</title>
+<style>
+  :root{
+    --bg:#05070e; --panel:rgba(12,18,32,.82); --line:rgba(120,160,220,.22);
+    --text:#dae6f7; --sub:#8ea3c4; --accent:#5fa8ff; --accent2:#ffc46b;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;background:var(--bg);color:var(--text);
+    font-family:"Noto Sans KR","Apple SD Gothic Neo",system-ui,sans-serif;
+    overflow:hidden;user-select:none}
+  #cv{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:grab}
+  #cv.dragging{cursor:grabbing}
+  .panel{position:fixed;background:var(--panel);border:1px solid var(--line);
+    border-radius:12px;backdrop-filter:blur(8px)}
+  /* ── 상단 바 ── */
+  #top{top:12px;left:12px;right:12px;padding:10px 14px;display:flex;gap:14px;
+    align-items:center;flex-wrap:wrap;z-index:5}
+  #top h1{font-size:14px;margin:0 8px 0 0;font-weight:600;letter-spacing:.2px;
+    white-space:nowrap}
+  #top h1 span{color:var(--sub);font-weight:400;font-size:11px;margin-left:6px}
+  .seg{display:flex;border:1px solid var(--line);border-radius:9px;overflow:hidden}
+  .seg button{background:transparent;border:0;color:var(--sub);font:inherit;
+    font-size:12px;padding:7px 12px;cursor:pointer;white-space:nowrap}
+  .seg button.on{background:linear-gradient(180deg,#2b64b8,#1d4785);color:#fff}
+  .seg button:hover:not(.on){background:rgba(95,168,255,.12);color:var(--text)}
+  .toggle{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--sub);
+    cursor:pointer}
+  .toggle input{accent-color:var(--accent);width:14px;height:14px}
+  /* ── 왼쪽: 천체 목록 ── */
+  #left{top:74px;left:12px;width:186px;padding:10px;z-index:5;max-height:calc(100vh - 150px);overflow:auto}
+  #left .title{font-size:11px;color:var(--sub);letter-spacing:.6px;margin:2px 0 8px}
+  .body-list{display:flex;flex-direction:column;gap:3px}
+  .body-list button{display:flex;align-items:center;gap:8px;background:transparent;
+    border:1px solid transparent;border-radius:8px;color:var(--text);font:inherit;
+    font-size:12px;padding:6px 8px;cursor:pointer;text-align:left}
+  .body-list button:hover{background:rgba(95,168,255,.1)}
+  .body-list button.on{border-color:var(--accent);background:rgba(95,168,255,.16)}
+  .dot{width:11px;height:11px;border-radius:50%;flex:0 0 auto;box-shadow:0 0 8px currentColor}
+  .body-list .meta{margin-left:auto;font-size:10px;color:var(--sub)}
+  #left .hint{font-size:10.5px;color:var(--sub);line-height:1.5;margin-top:10px;
+    border-top:1px dashed var(--line);padding-top:8px}
+  /* ── 오른쪽: 옵션 ── */
+  #right{top:74px;right:12px;width:206px;padding:12px;z-index:5}
+  #right .title{font-size:11px;color:var(--sub);letter-spacing:.6px;margin:0 0 8px}
+  .row{display:flex;align-items:center;justify-content:space-between;gap:8px;
+    font-size:12px;color:var(--text);margin:7px 0}
+  .row label{color:var(--sub)}
+  .row input[type=range]{width:104px;accent-color:var(--accent)}
+  .row .val{font-variant-numeric:tabular-nums;color:var(--accent2);font-size:11px;
+    min-width:44px;text-align:right}
+  .row select{background:#0d1526;color:var(--text);border:1px solid var(--line);
+    border-radius:6px;font:inherit;font-size:11px;padding:3px 5px}
+  #right .note{font-size:10.5px;color:var(--sub);line-height:1.55;margin-top:10px;
+    border-top:1px dashed var(--line);padding-top:8px}
+  /* ── 하단 상태 ── */
+  #status{bottom:12px;left:12px;right:12px;padding:8px 14px;display:flex;gap:18px;
+    align-items:center;font-size:11px;color:var(--sub);z-index:5;flex-wrap:wrap}
+  #status b{color:var(--text);font-weight:500}
+  #status .sep{width:1px;height:12px;background:var(--line)}
+  #event{color:var(--accent2)}
+  /* ── ray tracing 진행 ── */
+  #rtprogress{position:fixed;left:50%;bottom:58px;transform:translateX(-50%);
+    width:240px;height:3px;background:rgba(255,255,255,.12);border-radius:2px;
+    display:none;z-index:6}
+  #rtprogress i{display:block;height:100%;width:0;background:var(--accent);border-radius:2px}
+  @media (max-width:820px){
+    #left,#right{display:none}
+    #top{padding:8px 10px;gap:8px}
+    #top h1{font-size:12px}
+    .seg button{padding:6px 9px;font-size:11px}
+  }
+</style>
+</head>
+<body>
+<canvas id="cv"></canvas>
+
+<header id="top" class="panel">
+  <h1>나만의 태양계<span>WebGL2 · 개인 프로젝트 1~8주</span></h1>
+  <div class="seg" id="modeSeg">
+    <button data-mode="raster" class="on">래스터화</button>
+    <button data-mode="ray">Ray tracing</button>
+    <button data-mode="eclipse">식 관측기</button>
+  </div>
+  <div class="seg" id="camSeg">
+    <button data-cam="free" class="on">자유 시점</button>
+    <button data-cam="track">천체 추적</button>
+    <button data-cam="front">전면 직교</button>
+    <button data-cam="side">측면 직교</button>
+  </div>
+  <div class="seg" id="timeSeg">
+    <button data-speed="0">정지</button>
+    <button data-speed="1" class="on">1×</button>
+    <button data-speed="8">8×</button>
+    <button data-speed="40">40×</button>
+  </div>
+  <label class="toggle"><input type="checkbox" id="optOrbit" checked>궤도선</label>
+  <label class="toggle"><input type="checkbox" id="optStars" checked>별 배경</label>
+  <label class="toggle"><input type="checkbox" id="optShadow" checked>그림자</label>
+</header>
+
+<aside id="left" class="panel">
+  <div class="title">천체 선택</div>
+  <div class="body-list" id="bodyList"></div>
+  <div class="hint">선택한 천체를 기준으로 카메라가 공전합니다. 숫자 키 0~9 로도 선택할 수 있습니다.</div>
+</aside>
+
+<aside id="right" class="panel">
+  <div class="title">표시 설정</div>
+  <div class="row"><label>재질</label>
+    <select id="optMaterial">
+      <option value="pbr">PBR (D·F·G)</option>
+      <option value="phong">Phong</option>
+    </select>
+  </div>
+  <div class="row"><label>거리 표현</label>
+    <select id="optScale">
+      <option value="explore">압축 비율</option>
+      <option value="real">실제 비율</option>
+    </select>
+  </div>
+  <div class="row"><label>거울 반사</label><input type="checkbox" id="optEnv"></div>
+  <div class="row"><label>렌더 해상도</label>
+    <span class="val" id="valRes">100%</span>
+  </div>
+  <div class="row"><input type="range" id="optRes" min="0.35" max="1" step="0.05" value="1"></div>
+  <div class="row"><label>Ray 표본/픽셀</label>
+    <span class="val" id="valSpp">1</span>
+  </div>
+  <div class="row"><input type="range" id="optSpp" min="1" max="4" step="1" value="1"></div>
+  <div class="note" id="scaleNote">압축 비율: 행성 크기를 8배 과장하고 궤도 간격을 √압축해 한 화면에 담습니다. 실제 비율로 바꾸면 행성이 점처럼 작아집니다.</div>
+</aside>
+
+<footer id="status" class="panel">
+  <span>시뮬레이션 <b id="simDate">2026-01-01</b></span>
+  <span class="sep"></span>
+  <span>FPS <b id="fps">–</b></span>
+  <span class="sep"></span>
+  <span>삼각형 <b id="tris">–</b></span>
+  <span class="sep"></span>
+  <span>draw call <b id="draws">–</b></span>
+  <span class="sep"></span>
+  <span><b id="modeLabel">래스터화</b></span>
+  <span class="sep"></span>
+  <span id="event">–</span>
+</footer>
+<div id="rtprogress"><i></i></div>
+
+<script src="src/shaders.js"></script>
+<script src="src/mesh.js"></script>
+<script src="src/scene.js"></script>
+<script src="src/camera.js"></script>
+<script src="src/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>5주차 실습 · Phong 조명과 세 가지 광원</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #0b0f16; }
+  canvas { display: block; width: 100vw; height: 100vh; touch-action: none; }
+  #hud { position: fixed; left: 14px; top: 14px; margin: 0; padding: 10px 12px;
+         background: rgba(10,15,24,.72); border: 1px solid #2a3646; border-radius: 8px;
+         color: #c9d6e6; font: 12px/1.7 ui-monospace, Menlo, Consolas, monospace; white-space: pre; }
+  #hud b { color: #ffd8a0; }
+  #hint { position: fixed; left: 14px; bottom: 12px; margin: 0;
+          color: #9fb0c8; font: 12px/1.6 ui-monospace, Menlo, Consolas, monospace; }
+</style>
+</head>
+<body>
+<canvas id="glcanvas"></canvas>
+<p id="hud"></p>
+<p id="hint">드래그 = 시점 회전 · 휠 = 확대/축소 · <b>1/2/3</b> 재질 · <b>4/5/6</b> 광원 켜기/끄기 · <b>0</b> 모두 켜기</p>
+<script src="task1.js"></script>
+</body>
+</html>

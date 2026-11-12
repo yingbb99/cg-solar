@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>2주차 · 회전과 이동의 순서</title>
+<style>
+ html,body{margin:0;height:100%;background:#06090f;color:#c9d6e6;overflow:hidden;
+   font:13px/1.65 ui-monospace,Menlo,Consolas,monospace}
+ #wrap{display:flex;height:100vh}
+ #cv{flex:1;min-width:0;width:auto;height:100%;display:block}
+ #panel{width:330px;box-sizing:border-box;padding:14px;background:#0d1420;border-left:1px solid #22303f;overflow-y:auto}
+ h1{font-size:15px;margin:0 0 6px;color:#ffd8a0}
+ h2{font-size:12px;margin:14px 0 6px;color:#9fc7ff;border-top:1px solid #1d2836;padding-top:8px}
+ .ctl{margin:8px 0;font-size:12px}
+ .ctl label{display:flex;justify-content:space-between}
+ input[type=range]{width:100%}
+ pre{font-size:11px;line-height:1.3;background:#0a1119;border:1px solid #22303f;padding:7px;border-radius:6px;color:#9fd0ff;overflow-x:auto}
+ .row{display:flex;gap:6px;margin:6px 0} .row button{flex:1}
+ button{padding:6px;background:#1b2534;color:#dbe6f3;border:1px solid #2f3d50;border-radius:5px;cursor:pointer;font:inherit}
+ button.on{background:#3d6f9e;border-color:#3d6f9e}
+ p.note{font-size:12px;color:#93a6bd}
+ 
+</style></head>
+<body><div id="wrap"><canvas id="cv"></canvas><aside id="panel"><h1>2-1 회전 → 이동 순서</h1>
+ <p class="note">같은 회전·이동 값을 <b>순서만 바꿔</b> 적용해 보세요. 결과 행렬과 공의 위치가 달라집니다.
+  슬라이더를 움직이면 즉시 HTML 이 실행되어 화면에 반영됩니다.</p>
+ <div class="ctl"><label>회전 각도 θ <span id="aVal">45°</span></label><input id="a" type="range" min="0" max="360" step="1" value="45"></div>
+ <div class="ctl"><label>이동 x <span id="xVal">2.00</span></label><input id="x" type="range" min="-3" max="3" step="0.05" value="2"></div>
+ <div class="ctl"><label>이동 z <span id="zVal">0.50</span></label><input id="z" type="range" min="-3" max="3" step="0.05" value="0.5"></div>
+ <div class="row"><button id="modeA" class="on">회전 → 이동</button><button id="modeB">이동 → 회전</button></div>
+ <h2>M = 이동 · 회전 (회전 먼저)</h2><pre id="mA"></pre>
+ <h2>M = 회전 · 이동 (이동 먼저)</h2><pre id="mB"></pre>
+ <p class="note">열 우선 표기이므로 <b>오른쪽 행렬이 정점에 먼저</b> 적용됩니다.
+  M = T·R 이면 정점은 R 로 돌아간 뒤 T 로 이동하고, M = R·T 이면 이동한 뒤 원점 기준으로 회전합니다.</p>
+ <p class="note" id="result"></p></aside></div>
+<script src="../src/mesh.js"></script><script src="common.js"></script>
+<script>
+(() => {
+  const M = CGW.M, cv = document.querySelector('#cv');
+  const R = CGW.make(cv); if (!R) return;
+  const S = { angle: 45, x: 2, z: 0.5, modeA: true };
+  const cam = { yaw: 0.7, pitch: 0.42, dist: 8, target: [0, 0.9, 0], onChange: draw };
+  CGW.orbit(cv, cam);
+
+  function bind(id, key, fmt, out){
+    const el = document.querySelector('#'+id), lab = document.querySelector('#'+out);
+    el.addEventListener('input', () => { S[key] = Number(el.value); lab.textContent = fmt(S[key]); draw(); });
+  }
+  bind('a','angle', v => v.toFixed(0)+'°','aVal');
+  bind('x','x', v => v.toFixed(2),'xVal');
+  bind('z','z', v => v.toFixed(2),'zVal');
+  document.querySelector('#modeA').onclick = () => { S.modeA = true; toggle(); };
+  document.querySelector('#modeB').onclick = () => { S.modeA = false; toggle(); };
+  function toggle(){
+    document.querySelector('#modeA').classList.toggle('on', S.modeA);
+    document.querySelector('#modeB').classList.toggle('on', !S.modeA);
+    draw();
+  }
+
+  function draw(){
+    const T = M.translate(S.x, 0, S.z);
+    const Rm = M.rotateY(S.angle*Math.PI/180);
+    const mTR = M.multiply(T, Rm);      // 회전 먼저 → 이동
+    const mRT = M.multiply(Rm, T);      // 이동 먼저 → 회전
+    const used = S.modeA ? mTR : mRT;
+
+    const items = [
+      { model: M.multiply(M.translate(0,-0.02,0), M.multiply(M.rotateX(Math.PI/2), M.scale(9,9,9))),
+        color: [0.30,0.34,0.42], quad: true, flat: true },
+      { model: M.multiply(used, M.scale(0.55,0.55,0.55)), color: [0.95,0.60,0.32] },
+      // 이동만 한 참조 공 (반투명 대신 작게)
+      { model: M.multiply(T, M.scale(0.16,0.16,0.16)), color: [0.55,0.78,0.95] },
+      // 회전만 한 참조 공
+      { model: M.multiply(Rm, M.scale(0.16,0.16,0.16)), color: [0.55,0.95,0.70] },
+    ];
+    R.draw(items, { eye: CGW.eyeOf(cam), target: cam.target, fov: 45 });
+    document.querySelector('#mA').textContent = CGW.fmt(mTR);
+    document.querySelector('#mB').textContent = CGW.fmt(mRT);
+    const p1 = [mTR[12], mTR[13], mTR[14]], p2 = [mRT[12], mRT[13], mRT[14]];
+    document.querySelector('#result').textContent =
+      '적용 중: ' + (S.modeA ? '회전 → 이동' : '이동 → 회전') +
+      ' · 결과 위치 (' + (S.modeA?p1:p2).map(v => v.toFixed(2)).join(', ') + ')' +
+      ' · 두 결과의 거리 차이 ' + Math.hypot(p1[0]-p2[0], p1[2]-p2[2]).toFixed(2);
+  }
+  draw();
+})();
+</script>
+</body></html>
